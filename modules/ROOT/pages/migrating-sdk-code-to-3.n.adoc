@@ -50,51 +50,75 @@ include::6.5@sdk:shared:partial$migration.adoc[tag=lang]
 
 ==  Installation and Configuration
 
-The .NET SDK 3.x is available to download from the same resources as the previous generation.
-Builds can be found on Nuget. 
-In addition, a `zip` file is available with the artifacts. 
+The .NET SDK 3.x is available to download from the same resources as the previous generation
+SDK 3.0 is available from the same locations as the 2.0 SDK:
+* From NuGet (the most popular choice): `Install-Package CouchbaseNetClient -Version 3.0.0-beta2`
+* By downloading a [zip]https://packages.couchbase.com/clients/net/3.0/Couchbase-Net-Client.3.0.0-beta2.zip file directly
+* (Not officially supported) By cloning and building the source code directly on [github]https://github.com/couchbase/couchbase-net-client/tree/master
 Please see the xref:sdk-release-notes.adoc[Release Notes] for up-to-date information.
 
-IMPORTANT: .NET SDK 3.x has a minimum required .NET Standard version of 2.1, although we recommend running the latest version.
+Couchbase .NET SDK 3.0 targets the .NET Standard 2.0.
+This was chosen so .NET Full Framework 4.8 can be supported along with .NET Core 3.X and earlier and follows the suggested path for library authors.
+The goal is to use the latest and greatest .NET Core libraries available, but still allow fallback for developers still using .NET Full Framework as they progress towards .NET Standard compliance.
 
-Note that the transitive dependency list has changed. 
+==== Dependencies
 
-//TODO: dependency list
+There are few dependency changes from SDK 2.x.
+SDK 3.0 and later no longer has any dependencies on .NET Framework 4.5.2.
+It is based on .NET Standard 2.0.
+One dependency addition is DnsClient, which was previously in SDK 2.x through a transitive dependency via the [Couchbase.Extensions.DnsDiscovery]https://github.com/couchbaselabs/Couchbase.Extensions/blob/master/docs/dns-srv.md project.
 
-If you are pulling in the SDK through a package manager (recommended), all dependencies will be resolved for you automatically. 
-Otherwise please download the zip file and update the artifacts accordingly.
+Current dependencies:
 
+* DnsClient (>= 1.2.0)
+* Microsoft.CSharp (>= 4.5.0)
+* Microsoft.Extensions.Logging (>= 2.1.1)
+* Newtonsoft.Json (>= 11.0.2)
+* OpenTracing (>= 0.12.0)
+* System.Memory (>= 4.5.2)
+
+Note that if using the NuGet package these dependencies will all be handled for you by the NuGet Package Manager tool in Visual Studio or Visual Studio Code.
+See the xref:start-using-sdk.adoc[Start Using] document for information on adding it via NuGet.
 
 === Configuring the Environment
 
-Environment configuration from SDK 2 remains the same, although somewhat more flexible, with its configuration cleaned up to be more easily discoverable. 
-//TODO: The `CouchbaseEnvironment` has been renamed to `ClusterEnvironment` and can be customized through a builder:
+Configuration is essentially the same as SDK 2.x retaining capabilites with less tunable properties.
+Instead of using a `ClientConfiguration` object, you would use a `ClusterOptions` object.
+For example, to use a custom timeout for Key/Value (K/V) operations in SDK 2.x you would do something like this:
 
-[source,dotnet]
+
+[source,csharp]
 ----
-ITODO
-// SDK 2 custom KV timeout
- var config = new ClientConfiguration {
-    BucketConfigs = new Dictionary<string, BucketConfiguration> {
-      {"authenticated", new BucketConfiguration {
-          PoolConfiguration = new PoolConfiguration {
-              MaxSize = 6,
-              MinSize = 4,
-              SendTimeout = 12000
-          },
-          DefaultOperationLifespan = 123,
-          Password = "password",
-          Username = "username",
-          BucketName = "authenticated"
-      }}
-    }
+// SDK 2.0 custom k/v timeout
+var config = new ClientConfiguration
+{
+    DefaultOperationLifespan = (uint)TimeSpan.FromMinutes(10).TotalMilliseconds
 };
 ----
 
-[source,java]
+You can perform the same custom K/V timeout in SDK 3.0, however, you will use the `ClusterOptions` class:
+
+[source,csharp]
 ----
-ITODO
-include::example$Migrating.java[tag=timeoutbuilder,indent=0]
+// SDK 3.0 custom k/v timeout
+ var config = new ClusterOptions
+{
+    KvTimeout = TimeSpan.FromMinutes(10)
+};
+----
+
+The configuration options are passed into the `Cluster` object via a constructor:
+
+[source,csharp]
+----
+var cluster = new Cluster("couchbase://localhost", options);
+----
+
+Or by using one of the static `Cluster.Connect(...)` methods:
+
+[source,csharp]
+----
+var cluster = Cluster.Connect("couchbase://localhost", options);
 ----
 
 Similar to SDK 2, if you create your own `ClusterEnvironment` the SDK will not shut it down for you -- you need to do this manually at the end of the program lifetime:
